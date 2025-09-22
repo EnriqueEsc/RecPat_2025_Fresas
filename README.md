@@ -69,7 +69,7 @@ python ImageProcessing/pyqt_batch_gui.py
 
 ### Scripts de tratamiento
 Los scripts son secuencias de comandos con pasos de procesamiento (ejemplo: suavizado, conversión a HSV, segmentación de colores, conteo de componentes, etc.).  
-Ejemplo de script incluido: `detectar_fresas_para_GUI_corrected.txt`.
+Ejemplo de script incluido: `Proceso.txt`.
 
 ---
 
