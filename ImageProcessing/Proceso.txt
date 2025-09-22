@@ -1,0 +1,45 @@
+# detectar_fresas_para_GUI_corrected.txt
+# Pipeline para detectar fresas maduras (rojo) y no maduras/hojas (verde).
+# Asegúrate de haber cargado la imagen en la GUI y de registrar strawberry_commands.
+
+# 1) Pre-procesado: suavizar y mejorar contraste
+Gaussian(repeats=2, ksize=(5,5))
+# Ecualizar por canal (mantener color)
+Equalize(per_channel=True)
+
+# 2) Obtener imagen HSV (H:0-179, S:0-255, V:0-255)
+hsv = ToHSV()
+
+# 3) Máscara para tonos rojos (dos rangos por wraparound en H)
+mask_r1 = MaskHSV(hsv, (0, 60, 40), (10, 255, 255))
+mask_r2 = MaskHSV(hsv, (160, 60, 40), (179, 255, 255))
+mask_ripe = CombineMasks(mask_r1, mask_r2)
+
+# 4) Máscara para tonos verdes (hojas / fresas no maduras)
+mask_green = MaskHSV(hsv, (30, 40, 40), (85, 255, 255))
+
+# 5) Limpiar máscaras con morfología (erode + dilate) para quitar ruido
+mask_ripe_clean = CleanMask(mask_ripe, kernel=[[0,1,0],[1,1,1],[0,1,0]], erode=2, dilate=3)
+mask_green_clean = CleanMask(mask_green, kernel=[[0,1,0],[1,1,1],[0,1,0]], erode=1, dilate=2)
+
+# 6) Filtrar componentes por área (eliminar pequeños false positives)
+# Ajusta min_area según tu resolución (ej. 200-1000)
+mask_ripe_big = CCFilter(mask_ripe_clean, min_area=300)
+mask_green_big = CCFilter(mask_green_clean, min_area=300)
+
+# 7) Crear overlays coloreados para visualizar detecciones sobre la imagen original
+overlay_ripe = OverlayMask(CURRENT, mask_ripe_big, (0,0,255))   # rojo (B,G,R)
+overlay_green = OverlayMask(CURRENT, mask_green_big, (0,255,0))  # verde
+
+# 8) Fusionar overlays
+combined_overlay = CombineOverlays(overlay_ripe, overlay_green)
+
+# 9) Contar componentes detectadas (frutos maduros / no maduros)
+n_ripe = CountComponents(mask_ripe_big)
+n_unripe = CountComponents(mask_green_big)
+
+# 10) GUARDADO (solo al final del script)
+Save(mask_ripe_big, "str_ripe_mask.png")
+Save(mask_green_big, "str_unripe_mask.png")
+Save(combined_overlay, "str_overlay_final.png")
+SaveText("counts.txt", ("ripe=", n_ripe, ", unripe=", n_unripe))
